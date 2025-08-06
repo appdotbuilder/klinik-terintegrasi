@@ -1,19 +1,33 @@
 
+import { db } from '../db';
+import { queueTable } from '../db/schema';
 import { type Queue } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export const updateQueueStatus = async (id: number, status: 'waiting' | 'in_progress' | 'completed' | 'cancelled'): Promise<Queue> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating the status of a queue entry
-    // Should update the queue status and timestamp appropriately
-    return Promise.resolve({
-        id,
-        patient_id: 0,
-        queue_number: 0,
-        queue_date: new Date(),
+  try {
+    // Update queue status with timestamp
+    const result = await db.update(queueTable)
+      .set({ 
         status,
-        priority: 0,
-        notes: null,
-        created_at: new Date(),
         updated_at: new Date()
-    } as Queue);
+      })
+      .where(eq(queueTable.id, id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Queue entry with id ${id} not found`);
+    }
+
+    // Convert date string back to Date object for queue_date
+    const queueEntry = result[0];
+    return {
+      ...queueEntry,
+      queue_date: new Date(queueEntry.queue_date)
+    };
+  } catch (error) {
+    console.error('Queue status update failed:', error);
+    throw error;
+  }
 };

@@ -1,25 +1,51 @@
 
+import { db } from '../db';
+import { radiologyExamsTable } from '../db/schema';
 import { type RadiologyExam } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export const updateRadiologyExam = async (id: number, updates: Partial<{ status: string; radiologist_id: number; findings: string; impression: string; recommendations: string; }>): Promise<RadiologyExam> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating radiology examination results
-    // Should update examination findings and set completion timestamp
-    return Promise.resolve({
-        id,
-        patient_id: 0,
-        medical_record_id: null,
-        exam_type: '',
-        body_part: '',
-        status: updates.status || 'ordered',
-        ordered_by: 0,
-        radiologist_id: updates.radiologist_id || null,
-        findings: updates.findings || null,
-        impression: updates.impression || null,
-        recommendations: updates.recommendations || null,
-        ordered_at: new Date(),
-        completed_at: updates.status === 'completed' ? new Date() : null,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as RadiologyExam);
+export const updateRadiologyExam = async (
+  id: number, 
+  updates: Partial<{ 
+    status: string; 
+    radiologist_id: number; 
+    findings: string; 
+    impression: string; 
+    recommendations: string; 
+  }>
+): Promise<RadiologyExam> => {
+  try {
+    // Prepare update data
+    const updateData: any = {
+      ...updates,
+      updated_at: new Date()
+    };
+
+    // Set completed_at timestamp if status is being changed to completed
+    if (updates.status === 'completed') {
+      updateData.completed_at = new Date();
+    }
+
+    // Update the radiology exam
+    const result = await db.update(radiologyExamsTable)
+      .set(updateData)
+      .where(eq(radiologyExamsTable.id, id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Radiology exam with id ${id} not found`);
+    }
+
+    const exam = result[0];
+    
+    // Return with proper type conversions
+    return {
+      ...exam,
+      status: exam.status as any // Enum type conversion
+    };
+  } catch (error) {
+    console.error('Radiology exam update failed:', error);
+    throw error;
+  }
 };

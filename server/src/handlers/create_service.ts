@@ -1,18 +1,29 @@
 
+import { db } from '../db';
+import { servicesTable } from '../db/schema';
 import { type CreateServiceInput, type Service } from '../schema';
 
 export const createService = async (input: CreateServiceInput): Promise<Service> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is creating a new medical service with pricing
-    // Should store service details for billing purposes
-    return Promise.resolve({
-        id: 0, // Placeholder ID
+  try {
+    // Insert service record
+    const result = await db.insert(servicesTable)
+      .values({
         name: input.name,
-        description: input.description || null,
+        description: input.description,
         category: input.category,
-        price: input.price,
-        is_active: true,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as Service);
+        price: input.price.toString() // Convert number to string for numeric column
+      })
+      .returning()
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    const service = result[0];
+    return {
+      ...service,
+      price: parseFloat(service.price) // Convert string back to number
+    };
+  } catch (error) {
+    console.error('Service creation failed:', error);
+    throw error;
+  }
 };
